@@ -1,4 +1,5 @@
 import sys
+import math
 
 from pyspark.sql import SparkSession, DataFrame, functions as F, Window
 
@@ -39,14 +40,17 @@ if __name__ == "__main__":
     output = counts.collect()
 
     # create a spark dataframe (table)
-    df = spark.createDataFrame(output, ("Word", "Count"))
+    df = spark.createDataFrame(output, ("Word", "Frequency"))
 
     # Add Rank (row index) column
-    w = Window().orderBy(F.col("count").desc(),F.col("Word").asc())
+    w = Window().orderBy(F.col("Frequency").desc(),F.col("Word").asc())
     df = df.withColumn("Rank", F.row_number().over(w))
 
+    # calculate 5 percent of total records
+    first_5_percent = math.ceil((counts.count())*(5/100))
+
     # display the table .show(truncate=False) not working...
-    df.orderBy(F.col("count").desc(),F.col("Word").asc()).show(100)
+    df.orderBy(F.col("Frequency").desc(),F.col("Word").asc()).show(first_5_percent)
 
     # temp. Show each word
     for (word, count) in output:
