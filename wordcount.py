@@ -30,32 +30,46 @@ if __name__ == "__main__":
     lines = lines.map(lower_and_clean_string)
 
     # first we generate a flat map of single words
-    # then we add a 1 counter to each word
+    # then we add a 1 'counter' to each word
     # then we "group by" word and sum the 1 added before for each entry (word, X)
-    counts = lines.flatMap(lambda words: words.split(' ')) \
+    word_and_frequency_pairs = lines.flatMap(lambda words: words.split(' ')) \
                   .map(lambda word: (word, 1)) \
                   .reduceByKey(lambda a, b: a + b) \
 
-    # collect (?)
-    output = counts.collect()
+    # frequency_and_word_pairs = word_and_frequency_pairs.map(lambda x: (x[1],x[0]))
 
-    # create a spark dataframe (table)
-    df = spark.createDataFrame(output, ("Word", "Frequency"))
+    word_and_frequency_pairs = word_and_frequency_pairs.sortBy(lambda a: a[1], ascending=False)
 
-    # Add Rank (row index) column
-    w = Window().orderBy(F.col("Frequency").desc(),F.col("Word").asc())
-    df = df.withColumn("Rank", F.row_number().over(w))
+    print(word_and_frequency_pairs.take(100))
 
-    # calculate 5 percent of total records
-    first_5_percent = math.ceil((counts.count())*(5/100))
+    columns = ["Word","Frequency"]
 
-    # display the table .show(truncate=False) not working...
-    df.orderBy(F.col("Frequency").desc(),F.col("Word").asc()).show(first_5_percent)
+    df = word_and_frequency_pairs.toDF(columns)
 
-    # temp. Show each word
-    for (word, count) in output:
-        print("%s: %i" % (word, count))
+    df.show(100)
 
-    print("total {}".format(df.count()))
+
+    # # collect (?)
+    # output = counts.collect()
+
+    # # create a spark dataframe (table)
+    # df = spark.createDataFrame(output, ("Word", "Frequency"))
+
+    # # Add Rank (row index) column
+    # w = Window().orderBy(F.col("Frequency").desc(),F.col("Word").asc())
+    # df = df.withColumn("Rank", F.row_number().over(w))
+
+    # # calculate 5 percent of total records
+    # first_5_percent = math.ceil((counts.count())*(5/100))
+
+
+    # # display the table .show(truncate=False) not working...
+    # df.orderBy(F.col("Frequency").desc(),F.col("Word").asc()).show(first_5_percent)
+
+    # # temp. Show each word
+    # for (word, count) in output:
+    #     print("%s: %i" % (word, count))
+
+    # print("total {}".format(df.count()))
 
     spark.stop()
