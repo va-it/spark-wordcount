@@ -33,7 +33,19 @@ if __name__ == "__main__":
                  .map(lambda word: word.lower())  
     
     print('Total number of words: {}'.format(words.count()))
-    print('Total number of distinct words: {}'.format(words.distinct().count()))
+    distinct_words = words.distinct().count()
+    print('Total number of distinct words: {}'.format(distinct_words))
+    
+    # calculate thresholds
+    popular_threshold = math.ceil(distinct_words*(5/100))
+    common_threshold_l = math.ceil(distinct_words*(47.5/100))
+    common_threshold_u = math.floor(distinct_words*(57.2/100))
+    rare_threshold = distinct_words - math.ceil(distinct_words*(5/100))
+    
+    print('Popular treshold: {}'.format(popular_threshold))
+    print('Lower common treshold: {}'.format(common_threshold_l))
+    print('Upper common treshold: {}'.format(common_threshold_u))
+    print('Rare treshold: {}'.format(rare_threshold))
     
     
     # then we add a 1 'counter' to each word
@@ -58,16 +70,14 @@ if __name__ == "__main__":
     
     pySparkDataFrame.show(100)
 
-    # # calculate 5 percent of total records
-    five_percent = math.ceil((pySparkDataFrame.count())*(5/100))
     
-    popular_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(1,five_percent))
+    popular_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(1,popular_threshold))
     
-    # how to get the records ranked between 47.5% and 52.5% ???
-    common_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(21,24))
+    # correct???
+    common_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(common_threshold_l,common_threshold_u))
     
-    # how to get the last 5% of records???
-    rare_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(40,43))
+    # correct???
+    rare_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_words))
     
     print('Popular words')
     popular_words.show()
@@ -90,7 +100,19 @@ if __name__ == "__main__":
                    .map(lambda letter: letter.lower())
     
     print('Total number of letters: {}'.format(letters.count()))
-    print('Total number of distinct letters: {}'.format(letters.distinct().count()))
+    distinct_letters = letters.distinct().count()
+    print('Total number of distinct letters: {}'.format(distinct_letters))
+    
+    # calculate thresholds
+    popular_threshold = math.ceil(distinct_letters*(5/100))
+    common_threshold_l = math.ceil(distinct_letters*(47.5/100))
+    common_threshold_u = math.floor(distinct_letters*(57.2/100))
+    rare_threshold = distinct_letters - math.ceil(distinct_letters*(5/100))
+    
+    print('Popular treshold: {}'.format(popular_threshold))
+    print('Lower common treshold: {}'.format(common_threshold_l))
+    print('Upper common treshold: {}'.format(common_threshold_u))
+    print('Rare treshold: {}'.format(rare_threshold))
     
     letter_and_frequency_pairs = letters.map(lambda letter: (letter, 1)) \
                                     .reduceByKey(lambda a, b: a + b) \
@@ -112,6 +134,28 @@ if __name__ == "__main__":
     
     pySparkDataFrame.show(100)
 
+    # # calculate 5 percent of total records
+    five_percent = math.ceil(distinct_letters*(5/100))
+    
+    lower_middle_5_percent = math.ceil(distinct_letters*(47.5/100))
+    upper_middle_5_percent = math.floor(distinct_letters*(57.2/100))
+    
+    popular_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(1,popular_threshold))
+    
+    # correct???
+    common_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(common_threshold_l,common_threshold_u))
+    
+    # correct???
+    rare_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_letters))
+    
+    print('Popular letters')
+    popular_letters.show()
+    
+    print('Common letters')
+    common_letters.show()
+    
+    print('Rare letters')
+    rare_letters.show()
  
 
     # *************** STOP ****************
