@@ -27,25 +27,27 @@ if __name__ == "__main__":
     
     # remove puntuaction marks, separate dashed words and make them lowercase
     lines = lines.map(lower_and_clean_string)
-
+    
     # first we generate a flat map of single words
+    words = lines.flatMap(lambda words: words.split(' '))
+    
+    print('Total number of words: {}'.format(words.count()))
+    print('Total number of distinct words: {}'.format(words.distinct().count()))
+    
     # then we add a 1 'counter' to each word
     # then we "group by" word and sum the 1 added before for each entry (word, X)
-    word_and_frequency_pairs = lines.flatMap(lambda words: words.split(' ')) \
-                  .map(lambda word: (word, 1)) \
-                  .reduceByKey(lambda a, b: a + b) \
+    word_and_frequency_pairs = words.map(lambda word: (word, 1)) \
+                                    .reduceByKey(lambda a, b: a + b) \
 
+    # convert the RDD into a DataFrame temporarily used to further convert into a Pandas DataFrame
     columns = ["Word","Frequency"]
-
     df = word_and_frequency_pairs.toDF(columns)
 
+    # convert the dataFrame into a Pandas dataframe for easy sorting
     pandasDataframe = df.toPandas()
     pandasDataframeSorted = pandasDataframe.sort_values(by=['Frequency', 'Word'], ascending=[False, True])
-    pandasDataframeSorted.reset_index(drop=True, inplace=True)
-    pandasDataframeSorted.index += 1
 
-    print(pandasDataframeSorted)
-
+    # and then convert back to a PySpark DataFrame
     pySparkDataFrame = spark.createDataFrame(pandasDataframeSorted)
 
     # Add Rank (row index) column
@@ -74,8 +76,9 @@ if __name__ == "__main__":
     print('Rare words')
     rare_words.show()
     
-    # stop the Spark Session
-    spark.stop()
+    
+    
+    
  
 
     # # collect (?)
@@ -100,3 +103,5 @@ if __name__ == "__main__":
     #     print("%s: %i" % (word, count))
 
     # print("total {}".format(df.count()))
+
+    spark.stop()
