@@ -4,13 +4,13 @@ import pandas as pd
 
 from pyspark.sql import SparkSession, DataFrame, functions as F, Window
 
-def lower_and_clean_string(string_to_edit):
+def clean_string(string_to_clean):
         # define a list of all punctuation needed to be removed
         punctuation_to_remove='!"#$%&\'()*+-,./:;<=>?@[\\]^_`{|}~'
         # loop over each mark to remove and subsitute it with empty space in string
         for character in punctuation_to_remove:
-            string_to_edit = string_to_edit.replace(character, '')
-        return string_to_edit
+            string_to_clean = string_to_clean.replace(character, '')
+        return string_to_clean
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -25,14 +25,16 @@ if __name__ == "__main__":
     # read the text from the file, and create an RDD of lines
     lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])
     
-    # remove puntuaction marks, separate dashed words and make them lowercase
-    lines = lines.map(lower_and_clean_string)
+    # remove puntuaction marks
+    lines = lines.map(clean_string)
     
-    # first we generate a flat map of single words
-    words = lines.flatMap(lambda words: words.split(' '))
+    # first we generate a flat map of single lowercase words
+    words = lines.flatMap(lambda words: words.split(' ')) \
+                 .map(lambda word: word.lower())  
     
     print('Total number of words: {}'.format(words.count()))
     print('Total number of distinct words: {}'.format(words.distinct().count()))
+    
     
     # then we add a 1 'counter' to each word
     # then we "group by" word and sum the 1 added before for each entry (word, X)
@@ -79,29 +81,38 @@ if __name__ == "__main__":
     
     
     
+    # Section below is pretty much a copy and paste from above. Most of the logic should move into a function
+    print('----------------------')
+    
+    # extract letters from each word and convert them to lowercase
+    # we have the words RDD from before
+    letters = words.flatMap(lambda word: [character for character in word]) \
+                   .map(lambda letter: letter.lower())
+    
+    print('Total number of letters: {}'.format(letters.count()))
+    print('Total number of distinct letters: {}'.format(letters.distinct().count()))
+    
+    letter_and_frequency_pairs = letters.map(lambda letter: (letter, 1)) \
+                                    .reduceByKey(lambda a, b: a + b) \
+
+    # convert the RDD into a DataFrame temporarily used to further convert into a Pandas DataFrame
+    columns = ["Letter","Frequency"]
+    df = letter_and_frequency_pairs.toDF(columns)
+    
+    # convert the dataFrame into a Pandas dataframe for easy sorting
+    pandasDataframe = df.toPandas()
+    pandasDataframeSorted = pandasDataframe.sort_values(by=['Frequency', 'Letter'], ascending=[False, True])
+
+    # and then convert back to a PySpark DataFrame
+    pySparkDataFrame = spark.createDataFrame(pandasDataframeSorted)
+
+    # Add Rank (row index) column
+    w = Window().orderBy(F.col("Frequency").desc(),F.col("Letter").asc())
+    pySparkDataFrame = pySparkDataFrame.withColumn("Rank", F.row_number().over(w))   
+    
+    pySparkDataFrame.show(100)
+
  
 
-    # # collect (?)
-    # output = counts.collect()
-
-    # # create a spark dataframe (table)
-    # df = spark.createDataFrame(output, ("Word", "Frequency"))
-
-    # # Add Rank (row index) column
-    # w = Window().orderBy(F.col("Frequency").desc(),F.col("Word").asc())
-    # df = df.withColumn("Rank", F.row_number().over(w))
-
-    # # calculate 5 percent of total records
-    # first_5_percent = math.ceil((counts.count())*(5/100))
-
-
-    # # display the table .show(truncate=False) not working...
-    # df.orderBy(F.col("Frequency").desc(),F.col("Word").asc()).show(first_5_percent)
-
-    # # temp. Show each word
-    # for (word, count) in output:
-    #     print("%s: %i" % (word, count))
-
-    # print("total {}".format(df.count()))
-
+    # *************** STOP ****************
     spark.stop()
