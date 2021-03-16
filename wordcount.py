@@ -1,15 +1,16 @@
 import sys
 import math
 import pandas as pd
+import re
 
 from pyspark.sql import SparkSession, DataFrame, functions as F, Window
 
 def clean_string(string_to_clean):
         # define a list of all punctuation needed to be removed
-        punctuation_to_remove='!"#$%&\'()*+-,./:;<=>?@[\\]^_`{|}~'
+        punctuation_to_remove='!"#$%&\'()*+,./:;<=>?@[\\]^_`{|}~0123456789'
         # loop over each mark to remove and subsitute it with empty space in string
         for character in punctuation_to_remove:
-            string_to_clean = string_to_clean.replace(character, '')
+            string_to_clean = string_to_clean.replace(character, ' ')
         return string_to_clean
 
 if __name__ == "__main__":
@@ -26,11 +27,12 @@ if __name__ == "__main__":
     lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])
     
     # remove puntuaction marks
-    lines = lines.map(clean_string)
+    #lines = lines.map(clean_string)
     
     # first we generate a flat map of single lowercase words
-    words = lines.flatMap(lambda words: words.split(' ')) \
-                 .map(lambda word: word.lower())  
+    words = lines.flatMap(lambda words: re.split('[^a-zA-Z-]+', words)) \
+                 .map(lambda word: word.lower()) \
+                 .filter(lambda word: word != '')
     
     print('Total number of words: {}'.format(words.count()))
     distinct_words = words.distinct().count()
@@ -97,7 +99,8 @@ if __name__ == "__main__":
     # extract letters from each word and convert them to lowercase
     # we have the words RDD from before
     letters = words.flatMap(lambda word: [character for character in word]) \
-                   .map(lambda letter: letter.lower())
+                   .map(lambda letter: letter.lower()) \
+                   .filter(lambda letter: letter != '-')
     
     print('Total number of letters: {}'.format(letters.count()))
     distinct_letters = letters.distinct().count()
