@@ -28,6 +28,8 @@ if __name__ == "__main__":
     
     # remove puntuaction marks
     #lines = lines.map(clean_string)
+
+    # REGEX TO ONLY MATCH WORDS WITHOUT NUMBERS IN THEM: \b[^\d\W]+\b
     
     # first we generate a flat map of single lowercase words
     words = lines.flatMap(lambda words: re.split('[^a-zA-Z-]+', words)) \
