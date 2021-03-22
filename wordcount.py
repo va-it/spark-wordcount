@@ -5,14 +5,6 @@ import re
 
 from pyspark.sql import SparkSession, DataFrame, functions as F, Window
 
-def clean_string(string_to_clean):
-        # define a list of all punctuation needed to be removed
-        punctuation_to_remove='!"#$%&\'()*+,./:;<=>?@[\\]^_`{|}~0123456789'
-        # loop over each mark to remove and subsitute it with empty space in string
-        for character in punctuation_to_remove:
-            string_to_clean = string_to_clean.replace(character, ' ')
-        return string_to_clean
-
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: wordcount <file>", file=sys.stderr)
@@ -24,17 +16,28 @@ if __name__ == "__main__":
         .getOrCreate()
 
     # read the text from the file, and create an RDD of lines
-    lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])
-    
-    # remove puntuaction marks
-    #lines = lines.map(clean_string)
+    lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])   
 
-    # REGEX TO ONLY MATCH WORDS WITHOUT NUMBERS IN THEM: \b[^\d\W]+\b
-    
-    # first we generate a flat map of single lowercase words
-    words = lines.flatMap(lambda words: re.split('[^a-zA-Z-]+', words)) \
+    # REGEX TO MATCH ALL PUNCTUATION MARKS AND SPACES [?!.,:;"\'—\[\]\(\)\{\}\s]+
+    # Punctionation as defined here: https://punctuationmarks.org/
+    # first we generate a flat map of lowercase words separated by space or punctuation
+    words = lines.flatMap(lambda words: re.split('[?!.,:;"\'—\[\]\(\)\{\}\s]+', words)) \
                  .map(lambda word: word.lower()) \
                  .filter(lambda word: word != '')
+
+    
+    # Filter out all words with numbers and symbols in them
+    # ([a-z]+[\d]+[\w]+) catches any word that starts with letters and includes numbers
+    # ([\d]+[a-z]+[\w]+) catches any word that starts with numbers and includes letters
+    # ([a-z]+[\d]+) catches any word that starts with letters and end with numbers
+    words = words.filter(lambda word: not re.match('([a-z]+[\d]+[\w]+)|([\d]+[a-z]+[\w]+)|([a-z]+[\d]+)', word))
+    # Filter out all words with symbols in them
+    # ([a-z]+[\W]+[a-z]+) catches any word that starts with letters and includes symbols
+    # ([\W]+[a-z]+[\W]+) catches any word that starts with symbols and includes letters
+    # ([a-z]+[\W]+) catches any word that starts with letters and ends with symbols
+    words = words.filter(lambda word: not re.match('([a-z]+[\W]+[a-z]+)|([\W]+[a-z]+[\W]+)|([a-z]+[\W]+)', word))
+    # Filter out any word made up of only digits or only symbols
+    words = words.filter(lambda word: not re.match('([\d]+)|([\W]+)', word))
     
     print('Total number of words: {}'.format(words.count()))
     distinct_words = words.distinct().count()
@@ -43,7 +46,7 @@ if __name__ == "__main__":
     # calculate thresholds
     popular_threshold = math.ceil(distinct_words*(5/100))
     common_threshold_l = math.ceil(distinct_words*(47.5/100))
-    common_threshold_u = math.floor(distinct_words*(57.2/100))
+    common_threshold_u = math.floor(distinct_words*(57.5/100))
     rare_threshold = distinct_words - math.ceil(distinct_words*(5/100))
     
     print('Popular treshold: {}'.format(popular_threshold))
@@ -77,10 +80,8 @@ if __name__ == "__main__":
     
     popular_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(1,popular_threshold))
     
-    # correct???
     common_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(common_threshold_l,common_threshold_u))
     
-    # correct???
     rare_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_words))
     
     print('Popular words')
@@ -91,8 +92,6 @@ if __name__ == "__main__":
     
     print('Rare words')
     rare_words.show()
-    
-    
     
     
     # Section below is pretty much a copy and paste from above. Most of the logic should move into a function
@@ -111,7 +110,7 @@ if __name__ == "__main__":
     # calculate thresholds
     popular_threshold = math.ceil(distinct_letters*(5/100))
     common_threshold_l = math.ceil(distinct_letters*(47.5/100))
-    common_threshold_u = math.floor(distinct_letters*(57.2/100))
+    common_threshold_u = math.floor(distinct_letters*(57.5/100))
     rare_threshold = distinct_letters - math.ceil(distinct_letters*(5/100))
     
     print('Popular treshold: {}'.format(popular_threshold))
@@ -138,19 +137,11 @@ if __name__ == "__main__":
     pySparkDataFrame = pySparkDataFrame.withColumn("Rank", F.row_number().over(w))   
     
     pySparkDataFrame.show(100)
-
-    # # calculate 5 percent of total records
-    five_percent = math.ceil(distinct_letters*(5/100))
-    
-    lower_middle_5_percent = math.ceil(distinct_letters*(47.5/100))
-    upper_middle_5_percent = math.floor(distinct_letters*(57.2/100))
     
     popular_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(1,popular_threshold))
-    
-    # correct???
+
     common_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(common_threshold_l,common_threshold_u))
-    
-    # correct???
+
     rare_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_letters))
     
     print('Popular letters')
