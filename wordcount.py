@@ -16,10 +16,14 @@ if __name__ == "__main__":
         .getOrCreate()
 
     # read the text from the file, and create an RDD of lines
-    lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])   
+    lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])
+    
+    lines = lines.map(lambda line: line.encode('ascii','ignore'))
+    
+    lines = lines.map(lambda line: line.decode())
 
     # REGEX TO MATCH ALL PUNCTUATION MARKS AND SPACES [?!.,:;"\'—\[\]\(\)\{\}\s]+
-    # Punctionation as defined here: https://punctuationmarks.org/
+    # Punctuation as defined here: https://punctuationmarks.org/
     # first we generate a flat map of lowercase words separated by space or punctuation
     words = lines.flatMap(lambda words: re.split('[?!.,:;"\'—\[\]\(\)\{\}\s]+', words)) \
                  .map(lambda word: word.lower()) \
@@ -27,17 +31,22 @@ if __name__ == "__main__":
 
     
     # Filter out all words with numbers and symbols in them
-    # ([a-z]+[\d]+[\w]+) catches any word that starts with letters and includes numbers
-    # ([\d]+[a-z]+[\w]+) catches any word that starts with numbers and includes letters
-    # ([a-z]+[\d]+) catches any word that starts with letters and end with numbers
-    words = words.filter(lambda word: not re.match('([a-z]+[\d]+[\w]+)|([\d]+[a-z]+[\w]+)|([a-z]+[\d]+)', word))
+    # ([a-z]+[\d]+[a-z]+) catches any word that starts with letters and includes numbers (ab1c)
+    # ([\d]+[a-z]+) catches any word that starts with numbers and includes letters (1abc)
+    # ([a-z]+[\d]+) catches any word that starts with letters and ends with numbers (abc1)   
+    
+    words = words.filter(lambda word: not re.match('([a-z]+[\d]+[a-z]+)|([\d]+[a-z]+)|([a-z]+[\d]+)', word))
+    
     # Filter out all words with symbols in them
-    # ([a-z]+[\W]+[a-z]+) catches any word that starts with letters and includes symbols
-    # ([\W]+[a-z]+[\W]+) catches any word that starts with symbols and includes letters
-    # ([a-z]+[\W]+) catches any word that starts with letters and ends with symbols
-    words = words.filter(lambda word: not re.match('([a-z]+[\W]+[a-z]+)|([\W]+[a-z]+[\W]+)|([a-z]+[\W]+)', word))
+    # ([a-z]+[^a-z]+[a-z]+) catches any word that starts with letters and includes symbols (ab$c)
+    # ([^a-z]+[a-z]+) catches any word that starts with symbols and includes letters ($abc)
+    # ([a-z]+[^a-z]) catches any word that starts with letters and ends with symbols (abc$)
+    
+    words = words.filter(lambda word: not re.match('([a-z]+[^a-z]+[a-z]+)|([^a-z]+[a-z]+)|([a-z]+[^a-z])', word))
+    
     # Filter out any word made up of only digits or only symbols
     words = words.filter(lambda word: not re.match('([\d]+)|([\W]+)', word))
+    
     
     print('Total number of words: {}'.format(words.count()))
     distinct_words = words.distinct().count()
