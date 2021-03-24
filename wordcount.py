@@ -57,30 +57,28 @@ if __name__ == "__main__":
     # read the text from the file, and create an RDD of lines
     lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])
     
-    lines = lines.map(lambda line: line.encode('ascii','ignore'))
-    
-    lines = lines.map(lambda line: line.decode())
+    # encode to remove utf-8 characters and decode again to obtain string
+    lines = lines.map(lambda line: line.encode('ascii','ignore').decode())
 
     # first we generate a flat map of lowercase words separated by space or (some) punctuation
     words = lines.flatMap(lambda words: re.split('[.,:;"—\[\]\(\)\{\}\s]+', words)) \
                  .map(lambda word: word.lower()) \
-                 .filter(lambda word: word != '')
-
-    # Filter out all words with numbers and symbols in them
-    # ([a-z]+[\d]+[a-z]+) catches any word that starts with letters and includes numbers (ab1c)
-    # ([\d]+[a-z]+) catches any word that starts with numbers and includes letters (1abc)
-    # ([a-z]+[\d]+) catches any word that starts with letters and ends with numbers (abc1)   
+                 .filter(lambda word: word != '') 
     
     # remove saxon genitive from words ('s) - https://stackoverflow.com/a/46289237
     words = words.map(lambda word: re.sub(r"(\w+)'s", r'\1s', word))
-    
+
+
+    # Filter out all words with numbers in them
+    # ([a-z]+[\d]+[a-z]+) catches any word that starts with letters and includes numbers (ab1c)
+    # ([\d]+[a-z]+) catches any word that starts with numbers and includes letters (1abc)
+    # ([a-z]+[\d]+) catches any word that starts with letters and ends with numbers (abc1)  
     words = words.filter(lambda word: not re.match('([a-z]+[\d]+[a-z]+)|([\d]+[a-z]+)|([a-z]+[\d]+)', word))
     
     # Filter out all words with symbols in them
     # ([a-z]+[^a-z-']+[a-z]+) words that start with letters and include symbols (ab$c). ignores (ab-c)
     # ([^a-z-]+[a-z]+) words that start with symbols and include letters ($abc)
     # ([a-z]+[^a-z-]) words that start with letters and end with symbols (abc$)
-    
     words = words.filter(lambda word: not re.match('([a-z]+[^a-z-]+[a-z]+)|([^a-z-]+[a-z]+)|([a-z]+[^a-z-]+)', word))
     
     # Filter out any word made up of only digits or only symbols
@@ -97,8 +95,7 @@ if __name__ == "__main__":
     # print thresholds
     printThresholds(thresholds)
     
-    # then we add a 1 'counter' to each word
-    # then we "group by" word and sum the 1 added before for each entry (word, X)
+    # Add a 1 'counter' to each word and then "group by" word and sum the 1 added before for each entry (word, X)
     word_and_frequency_pairs = words.map(lambda word: (word, 1)) \
                                     .reduceByKey(lambda a, b: a + b) \
 
@@ -140,15 +137,12 @@ if __name__ == "__main__":
     letter_and_frequency_pairs = letters.map(lambda letter: (letter, 1)) \
                                     .reduceByKey(lambda a, b: a + b) \
 
-    # convert the RDD into a DataFrame temporarily used to further convert into a Pandas DataFrame
     columns = ["Letter","Frequency"]
     df = letter_and_frequency_pairs.toDF(columns)
     
-    # convert the dataFrame into a Pandas dataframe for easy sorting
     pandasDataframe = df.toPandas()
     pandasDataframeSorted = pandasDataframe.sort_values(by=['Frequency', 'Letter'], ascending=[False, True])
 
-    # and then convert back to a PySpark DataFrame
     pySparkDataFrame = spark.createDataFrame(pandasDataframeSorted)
 
     # Add Rank (row index) column
