@@ -45,7 +45,7 @@ if __name__ == "__main__":
     words = words.filter(lambda word: not re.match('([a-z]+[^a-z]+[a-z]+)|([^a-z]+[a-z]+)|([a-z]+[^a-z])', word))
     
     # Filter out any word made up of only digits or only symbols
-    words = words.filter(lambda word: not re.match('([\d]+)|([\W]+)', word))
+    words = words.filter(lambda word: not re.match('([\d]+)|([^a-z]+)', word))
     
     
     print('Total number of words: {}'.format(words.count()))
@@ -94,13 +94,13 @@ if __name__ == "__main__":
     rare_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_words))
     
     print('Popular words')
-    popular_words.show()
+    popular_words.show(n=popular_words.count())
     
     print('Common words')
-    common_words.show()
+    common_words.show(n=common_words.count())
     
     print('Rare words')
-    rare_words.show()
+    rare_words.show(n=rare_words.count())
     
     
     # Section below is pretty much a copy and paste from above. Most of the logic should move into a function
@@ -109,7 +109,6 @@ if __name__ == "__main__":
     # extract letters from each word and convert them to lowercase
     # we have the words RDD from before
     letters = words.flatMap(lambda word: [character for character in word]) \
-                   .map(lambda letter: letter.lower()) \
                    .filter(lambda letter: letter != '-')
     
     print('Total number of letters: {}'.format(letters.count()))
@@ -154,13 +153,13 @@ if __name__ == "__main__":
     rare_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_letters))
     
     print('Popular letters')
-    popular_letters.show()
+    popular_letters.show(n=popular_letters.count())
     
     print('Common letters')
-    common_letters.show()
+    common_letters.show(n=common_letters.count())
     
     print('Rare letters')
-    rare_letters.show()
+    rare_letters.show(n=rare_letters.count())
  
 
     # *************** STOP ****************
