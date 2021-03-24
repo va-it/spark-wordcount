@@ -2,18 +2,19 @@ import sys
 import math
 import pandas as pd
 import re
+import os.path
 
 from pyspark.sql import SparkSession, DataFrame, functions as F, Window
 
 def printTotalsInformation(entities, distinct_entities, entity):
         print('Total number of {entity}: {count}'.format(entity=entity,count=entities.count()))
         print('Total number of distinct {entity}: {count}'.format(entity=entity,count=distinct_entities.count()))
-
+        
 def calculateThresholds(distinct_entities):
     count = distinct_entities.count()
     popular_threshold = math.ceil(count*(5/100))
-    common_threshold_l = math.ceil(count*(47.5/100))
-    common_threshold_u = math.floor(count*(57.5/100))
+    common_threshold_l = math.floor(count*(47.5/100))
+    common_threshold_u = math.ceil(count*(52.5/100))
     rare_threshold = count - math.ceil(count*(5/100))
     return {
         'popular_threshold': popular_threshold, 
@@ -43,6 +44,10 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: wordcount <file>", file=sys.stderr)
         sys.exit(-1)
+    
+    if not os.path.isfile(sys.argv[1]):
+        print("Please use a valid file", file=sys.stderr)
+        sys.exit(-1)
 
     spark = SparkSession\
         .builder\
@@ -56,31 +61,30 @@ if __name__ == "__main__":
     
     lines = lines.map(lambda line: line.decode())
 
-    # REGEX TO MATCH ALL PUNCTUATION MARKS AND SPACES [?!.,:;"\'—\[\]\(\)\{\}\s]+
-    # Punctuation as defined here: https://punctuationmarks.org/
-    # first we generate a flat map of lowercase words separated by space or punctuation
-    words = lines.flatMap(lambda words: re.split('[?!.,:;"\'—\[\]\(\)\{\}\s]+', words)) \
+    # first we generate a flat map of lowercase words separated by space or (some) punctuation
+    words = lines.flatMap(lambda words: re.split('[.,:;"—\[\]\(\)\{\}\s]+', words)) \
                  .map(lambda word: word.lower()) \
                  .filter(lambda word: word != '')
 
-    
     # Filter out all words with numbers and symbols in them
     # ([a-z]+[\d]+[a-z]+) catches any word that starts with letters and includes numbers (ab1c)
     # ([\d]+[a-z]+) catches any word that starts with numbers and includes letters (1abc)
     # ([a-z]+[\d]+) catches any word that starts with letters and ends with numbers (abc1)   
     
+    # remove saxon genitive from words ('s) - https://stackoverflow.com/a/46289237
+    words = words.map(lambda word: re.sub(r"(\w+)'s", r'\1s', word))
+    
     words = words.filter(lambda word: not re.match('([a-z]+[\d]+[a-z]+)|([\d]+[a-z]+)|([a-z]+[\d]+)', word))
     
     # Filter out all words with symbols in them
-    # ([a-z]+[^a-z]+[a-z]+) catches any word that starts with letters and includes symbols (ab$c)
-    # ([^a-z]+[a-z]+) catches any word that starts with symbols and includes letters ($abc)
-    # ([a-z]+[^a-z]) catches any word that starts with letters and ends with symbols (abc$)
+    # ([a-z]+[^a-z-']+[a-z]+) words that start with letters and include symbols (ab$c). ignores (ab-c)
+    # ([^a-z-]+[a-z]+) words that start with symbols and include letters ($abc)
+    # ([a-z]+[^a-z-]) words that start with letters and end with symbols (abc$)
     
-    words = words.filter(lambda word: not re.match('([a-z]+[^a-z]+[a-z]+)|([^a-z]+[a-z]+)|([a-z]+[^a-z])', word))
+    words = words.filter(lambda word: not re.match('([a-z]+[^a-z-]+[a-z]+)|([^a-z-]+[a-z]+)|([a-z]+[^a-z-]+)', word))
     
     # Filter out any word made up of only digits or only symbols
     words = words.filter(lambda word: not re.match('([\d]+)|([^a-z]+)', word))
-    
     
     distinct_words = words.distinct()
 
