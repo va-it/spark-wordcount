@@ -5,6 +5,40 @@ import re
 
 from pyspark.sql import SparkSession, DataFrame, functions as F, Window
 
+def printTotalsInformation(entities, distinct_entities, entity):
+        print('Total number of {entity}: {count}'.format(entity=entity,count=entities.count()))
+        print('Total number of distinct {entity}: {count}'.format(entity=entity,count=distinct_entities.count()))
+
+def calculateThresholds(distinct_entities):
+    count = distinct_entities.count()
+    popular_threshold = math.ceil(count*(5/100))
+    common_threshold_l = math.ceil(count*(47.5/100))
+    common_threshold_u = math.floor(count*(57.5/100))
+    rare_threshold = count - math.ceil(count*(5/100))
+    return {
+        'popular_threshold': popular_threshold, 
+        'common_threshold_l': common_threshold_l, 
+        'common_threshold_u': common_threshold_u,
+        'rare_threshold': rare_threshold
+    }
+
+def printThresholds(thresholds):
+    print('Popular treshold: {}'.format(thresholds['popular_threshold']))
+    print('Lower common treshold: {}'.format(thresholds['common_threshold_l']))
+    print('Upper common treshold: {}'.format(thresholds['common_threshold_u']))
+    print('Rare treshold: {}'.format(thresholds['rare_threshold']))
+
+def categoriseAndPrintEntities(distinct_entities, dataFrame, entity):
+    popular_entities = dataFrame.filter(dataFrame.Rank.between(1,thresholds['popular_threshold']))
+    common_entities = dataFrame.filter(dataFrame.Rank.between(thresholds['common_threshold_l'],thresholds['common_threshold_u']))
+    rare_entities = dataFrame.filter(dataFrame.Rank.between(thresholds['rare_threshold'],distinct_entities.count()))
+    print('\nPopular {}'.format(entity))
+    popular_entities.show(n=popular_entities.count())
+    print('Common {}'.format(entity))
+    common_entities.show(n=common_entities.count())
+    print('Rare {}'.format(entity))
+    rare_entities.show(n=rare_entities.count())
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: wordcount <file>", file=sys.stderr)
@@ -48,21 +82,16 @@ if __name__ == "__main__":
     words = words.filter(lambda word: not re.match('([\d]+)|([^a-z]+)', word))
     
     
-    print('Total number of words: {}'.format(words.count()))
-    distinct_words = words.distinct().count()
-    print('Total number of distinct words: {}'.format(distinct_words))
+    distinct_words = words.distinct()
+
+    #print totals
+    printTotalsInformation(words, distinct_words, 'words')
     
-    # calculate thresholds
-    popular_threshold = math.ceil(distinct_words*(5/100))
-    common_threshold_l = math.ceil(distinct_words*(47.5/100))
-    common_threshold_u = math.floor(distinct_words*(57.5/100))
-    rare_threshold = distinct_words - math.ceil(distinct_words*(5/100))
-    
-    print('Popular treshold: {}'.format(popular_threshold))
-    print('Lower common treshold: {}'.format(common_threshold_l))
-    print('Upper common treshold: {}'.format(common_threshold_u))
-    print('Rare treshold: {}'.format(rare_threshold))
-    
+    #calculate thresholds
+    thresholds = calculateThresholds(distinct_words)
+
+    # print thresholds
+    printThresholds(thresholds)
     
     # then we add a 1 'counter' to each word
     # then we "group by" word and sum the 1 added before for each entry (word, X)
@@ -82,49 +111,27 @@ if __name__ == "__main__":
 
     # Add Rank (row index) column
     w = Window().orderBy(F.col("Frequency").desc(),F.col("Word").asc())
-    pySparkDataFrame = pySparkDataFrame.withColumn("Rank", F.row_number().over(w))   
+    pySparkDataFrame = pySparkDataFrame.withColumn("Rank", F.row_number().over(w))
     
-    pySparkDataFrame.show(100)
+    categoriseAndPrintEntities(distinct_words, pySparkDataFrame, 'words')
 
-    
-    popular_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(1,popular_threshold))
-    
-    common_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(common_threshold_l,common_threshold_u))
-    
-    rare_words = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_words))
-    
-    print('Popular words')
-    popular_words.show(n=popular_words.count())
-    
-    print('Common words')
-    common_words.show(n=common_words.count())
-    
-    print('Rare words')
-    rare_words.show(n=rare_words.count())
-    
-    
-    # Section below is pretty much a copy and paste from above. Most of the logic should move into a function
-    print('----------------------')
+    print('----------------------\n')
     
     # extract letters from each word and convert them to lowercase
     # we have the words RDD from before
     letters = words.flatMap(lambda word: [character for character in word]) \
                    .filter(lambda letter: letter != '-')
     
-    print('Total number of letters: {}'.format(letters.count()))
-    distinct_letters = letters.distinct().count()
-    print('Total number of distinct letters: {}'.format(distinct_letters))
+    distinct_letters = letters.distinct()
+    
+    # print totals
+    printTotalsInformation(letters, distinct_letters, 'letters')
     
     # calculate thresholds
-    popular_threshold = math.ceil(distinct_letters*(5/100))
-    common_threshold_l = math.ceil(distinct_letters*(47.5/100))
-    common_threshold_u = math.floor(distinct_letters*(57.5/100))
-    rare_threshold = distinct_letters - math.ceil(distinct_letters*(5/100))
+    thresholds = calculateThresholds(distinct_letters)
     
-    print('Popular treshold: {}'.format(popular_threshold))
-    print('Lower common treshold: {}'.format(common_threshold_l))
-    print('Upper common treshold: {}'.format(common_threshold_u))
-    print('Rare treshold: {}'.format(rare_threshold))
+    # print thresholds
+    printThresholds(thresholds)
     
     letter_and_frequency_pairs = letters.map(lambda letter: (letter, 1)) \
                                     .reduceByKey(lambda a, b: a + b) \
@@ -142,25 +149,9 @@ if __name__ == "__main__":
 
     # Add Rank (row index) column
     w = Window().orderBy(F.col("Frequency").desc(),F.col("Letter").asc())
-    pySparkDataFrame = pySparkDataFrame.withColumn("Rank", F.row_number().over(w))   
-    
-    pySparkDataFrame.show(100)
-    
-    popular_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(1,popular_threshold))
+    pySparkDataFrame = pySparkDataFrame.withColumn("Rank", F.row_number().over(w)) 
 
-    common_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(common_threshold_l,common_threshold_u))
-
-    rare_letters = pySparkDataFrame.filter(pySparkDataFrame.Rank.between(rare_threshold,distinct_letters))
-    
-    print('Popular letters')
-    popular_letters.show(n=popular_letters.count())
-    
-    print('Common letters')
-    common_letters.show(n=common_letters.count())
-    
-    print('Rare letters')
-    rare_letters.show(n=rare_letters.count())
+    categoriseAndPrintEntities(distinct_letters, pySparkDataFrame, 'letters')  
  
-
     # *************** STOP ****************
     spark.stop()
