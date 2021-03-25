@@ -58,9 +58,12 @@ if __name__ == "__main__":
     lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])
     
     lines = lines.map(lambda line: line.encode('latin','ignore').decode('latin'))
+    
+    
 
     # first we generate a flat map of lowercase words separated by space or (some) punctuation
-    words = lines.flatMap(lambda words: re.split('[.,:;!"—\[\]\(\)\{\}\s]+', words)) \
+    
+    words = lines.flatMap(lambda words: re.split('([.,:;!?"—_\[\]\(\)\{\}\s]+)', words)) \
                  .map(lambda word: word.lower()) \
                  .filter(lambda word: word != '') 
     
