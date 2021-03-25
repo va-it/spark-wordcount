@@ -57,38 +57,27 @@ if __name__ == "__main__":
     # read the text from the file, and create an RDD of lines
     lines = spark.read.text(sys.argv[1]).rdd.map(lambda r: r[0])
     
-    lines = lines.map(lambda line: line.encode('ascii','ignore').decode())
+    lines = lines.map(lambda line: line.encode('latin','ignore').decode('latin'))
 
     # first we generate a flat map of lowercase words separated by space or (some) punctuation
-    words = lines.flatMap(lambda words: re.split('[.,:;"—\[\]\(\)\{\}\s]+', words)) \
+    words = lines.flatMap(lambda words: re.split('[.,:;!"—\[\]\(\)\{\}\s]+', words)) \
                  .map(lambda word: word.lower()) \
-                 .filter(lambda word: word != '')
-
-    # Filter out all words with numbers and symbols in them
-    # ([a-z]+[\d]+[a-z]+) catches any word that starts with letters and includes numbers (ab1c)
-    # ([\d]+[a-z]+) catches any word that starts with numbers and includes letters (1abc)
-    # ([a-z]+[\d]+) catches any word that starts with letters and ends with numbers (abc1)   
+                 .filter(lambda word: word != '') 
     
     # remove saxon genitive from words ('s) - https://stackoverflow.com/a/46289237
     words = words.map(lambda word: re.sub(r"(\w+)'s", r'\1s', word))
     
-    words = words.filter(lambda word: not re.match('([a-z]+[\d]+[a-z]+)|([\d]+[a-z]+)|([a-z]+[\d]+)', word))
+    # remove all words with numbers in them
+    words = words.filter(lambda word: not re.match('.*[\d].*', word))
     
-    # Filter out all words with symbols in them
-    # ([a-z]+[-][^a-z]+?[a-z]+) words that start with letters and include hyphens (ab-%c)(ab--c). Ignores (ab-c)
-    # ([a-z]+[^a-z-]+?[a-z]+) words that start with letters and include symbols (ab$c)
-    # (^[^a-z]+[a-z]+) words that start with symbols and include letters ($abc)
-    # ([a-z]+[^a-z]+$) words that start with letters and end with symbols (abc$)
+    # remove all words with symbols but not hyphenated ones
+    words = words.filter(lambda word: not re.match('.*[^a-z-].*', word))
     
-    # Some words are not filtered (e.g. wry-neck'd) 
-        
-    words = words.filter(
-        lambda word: not re.match('([a-z]+[-][^a-z]+?[a-z]+)|([a-z]+[^a-z-]+?[a-z]+)|(^[^a-z]+[a-z]+)|([a-z]+[^a-z]+$)', word)
-    )
-    
-    # Filter out any word made up of only digits or only symbols
-    words = words.filter(lambda word: not re.match('([\d]+)|([^a-z]+)', word))
-    
+    # ^([-].*$) remove all words beginning with hyphen (-abc)
+    # (.*[-]{2,}.*$) remove all words with multiple hyphens next to each other (abc--abc)
+    # ^(.*[^a-z]$) remove all words with ending symbol (abc-)(abc...)
+    words = words.filter(lambda word: not re.match('^([-].*$)|(.*[-]{2,}.*$)|^(.*[^a-z]$)', word))
+
     distinct_words = words.distinct()
 
     #print totals
