@@ -48,6 +48,8 @@ if __name__ == "__main__":
     if not os.path.isfile(sys.argv[1]):
         print("Please use a valid file", file=sys.stderr)
         sys.exit(-1)
+        
+    outputFile = 'output-{}'.format(sys.argv[1])
 
     spark = SparkSession\
         .builder\
@@ -59,8 +61,6 @@ if __name__ == "__main__":
     
     lines = lines.map(lambda line: line.encode('latin','ignore').decode('latin'))
     
-    
-
     # first we generate a flat map of lowercase words separated by space or (some) punctuation
     
     words = lines.flatMap(lambda words: re.split('([.,:;!?"—_\[\]\(\)\{\}\s]+)', words)) \
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     w = Window().orderBy(F.col("Frequency").desc(),F.col("Letter").asc())
     pySparkDataFrame = pySparkDataFrame.withColumn("Rank", F.row_number().over(w)) 
 
-    categoriseAndPrintEntities(distinct_letters, pySparkDataFrame, 'letters')  
+    categoriseAndPrintEntities(distinct_letters, pySparkDataFrame, 'letters')
  
     # *************** STOP ****************
     spark.stop()
