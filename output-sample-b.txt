@@ -1,0 +1,68 @@
+Total number of words: 47
+Total number of distinct words: 26
+Popular treshold: 2
+Lower common treshold: 12
+Upper common treshold: 14
+Rare treshold: 24
+
+Popular words
++-----+---------+----+
+| Word|Frequency|Rank|
++-----+---------+----+
+| blue|        6|   1|
+|green|        6|   2|
++-----+---------+----+
+
+Common words
++----+---------+----+
+|Word|Frequency|Rank|
++----+---------+----+
+| hgb|        1|  12|
+|  io|        1|  13|
+|  jk|        1|  14|
++----+---------+----+
+
+Rare words
++----+---------+----+
+|Word|Frequency|Rank|
++----+---------+----+
+| usa|        1|  24|
+|when|        1|  25|
+| you|        1|  26|
++----+---------+----+
+
+----------------------
+
+Total number of letters: 158
+Total number of distinct letters: 22
+Popular treshold: 2
+Lower common treshold: 10
+Upper common treshold: 12
+Rare treshold: 20
+
+Popular letters
++------+---------+----+
+|Letter|Frequency|Rank|
++------+---------+----+
+|     e|       32|   1|
+|     h|       15|   2|
++------+---------+----+
+
+Common letters
++------+---------+----+
+|Letter|Frequency|Rank|
++------+---------+----+
+|     o|        7|  10|
+|     d|        6|  11|
+|     k|        6|  12|
++------+---------+----+
+
+Rare letters
++------+---------+----+
+|Letter|Frequency|Rank|
++------+---------+----+
+|     j|        1|  20|
+|     p|        1|  21|
+|     y|        1|  22|
++------+---------+----+
+
