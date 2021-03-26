@@ -33,12 +33,14 @@ def categoriseAndPrintEntities(distinct_entities, dataFrame, entity):
     popular_entities = dataFrame.filter(dataFrame.Rank.between(1,thresholds['popular_threshold']))
     common_entities = dataFrame.filter(dataFrame.Rank.between(thresholds['common_threshold_l'],thresholds['common_threshold_u']))
     rare_entities = dataFrame.filter(dataFrame.Rank.between(thresholds['rare_threshold'],distinct_entities.count()))
+    
     print('\nPopular {}'.format(entity))
     popular_entities.show(n=popular_entities.count())
     print('Common {}'.format(entity))
     common_entities.show(n=common_entities.count())
     print('Rare {}'.format(entity))
     rare_entities.show(n=rare_entities.count())
+    
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -49,7 +51,14 @@ if __name__ == "__main__":
         print("Please use a valid file", file=sys.stderr)
         sys.exit(-1)
         
+    # generate output file name    
     outputFile = 'output-{}'.format(sys.argv[1])
+    
+    # save a reference to the sys.stdout so it can be restored once execution ends 
+    original = sys.stdout
+    
+    # redirect any print statement to a file
+    sys.stdout = open(outputFile, 'w')
 
     spark = SparkSession\
         .builder\
@@ -154,3 +163,6 @@ if __name__ == "__main__":
  
     # *************** STOP ****************
     spark.stop()
+    
+    # restore stdout to its original form
+    sys.stdout = original
