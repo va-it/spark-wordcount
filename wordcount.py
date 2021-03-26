@@ -70,7 +70,7 @@ if __name__ == "__main__":
     
     lines = lines.map(lambda line: line.encode('latin','ignore').decode('latin'))
     
-    # first we generate a flat map of lowercase words separated by space or (some) punctuation
+    # first generate a flat map of lowercase words separated by space or (some) punctuation
     
     words = lines.flatMap(lambda words: re.split('([.,:;!?"—_\[\]\(\)\{\}\s]+)', words)) \
                  .map(lambda word: word.lower()) \
@@ -92,17 +92,16 @@ if __name__ == "__main__":
 
     distinct_words = words.distinct()
 
-    #print totals
+    # print totals
     printTotalsInformation(words, distinct_words, 'words')
     
-    #calculate thresholds
+    # calculate thresholds
     thresholds = calculateThresholds(distinct_words)
 
     # print thresholds
     printThresholds(thresholds)
     
-    # then we add a 1 'counter' to each word
-    # then we "group by" word and sum the 1 added before for each entry (word, X)
+    # add a 1 'counter' to each word, "group by" word and sum the 1 added before for each entry (word, X)
     word_and_frequency_pairs = words.map(lambda word: (word, 1)) \
                                     .reduceByKey(lambda a, b: a + b) \
 
@@ -114,7 +113,7 @@ if __name__ == "__main__":
     pandasDataframe = df.toPandas()
     pandasDataframeSorted = pandasDataframe.sort_values(by=['Frequency', 'Word'], ascending=[False, True])
 
-    # and then convert back to a PySpark DataFrame
+    # convert back to a PySpark DataFrame
     pySparkDataFrame = spark.createDataFrame(pandasDataframeSorted)
 
     # Add Rank (row index) column
@@ -125,8 +124,7 @@ if __name__ == "__main__":
 
     print('----------------------\n')
     
-    # extract letters from each word and convert them to lowercase
-    # we have the words RDD from before
+    # extract letters from each word - the words are in the RDD created before
     letters = words.flatMap(lambda word: [character for character in word]) \
                    .filter(lambda letter: letter != '-')
     
@@ -152,7 +150,7 @@ if __name__ == "__main__":
     pandasDataframe = df.toPandas()
     pandasDataframeSorted = pandasDataframe.sort_values(by=['Frequency', 'Letter'], ascending=[False, True])
 
-    # and then convert back to a PySpark DataFrame
+    # convert back to a PySpark DataFrame
     pySparkDataFrame = spark.createDataFrame(pandasDataframeSorted)
 
     # Add Rank (row index) column
@@ -161,7 +159,7 @@ if __name__ == "__main__":
 
     categoriseAndPrintEntities(distinct_letters, pySparkDataFrame, 'letters')
  
-    # *************** STOP ****************
+    # *************** STOP SPARK SESSION ****************
     spark.stop()
     
     # restore stdout to its original form
