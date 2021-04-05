@@ -43,16 +43,15 @@ def categoriseAndPrintEntities(distinct_entities, dataFrame, entity):
     
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: wordcount <file>", file=sys.stderr)
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print("Usage: wordcount <file> [output-path]", file=sys.stderr)
         sys.exit(-1)
-    
-    if not os.path.isfile(sys.argv[1]):
-        print("Please use a valid file", file=sys.stderr)
-        sys.exit(-1)
-        
-    # generate output file name    
-    outputFile = 'output-{}'.format(sys.argv[1])
+
+    if len(sys.argv) == 3:
+        outputFile = sys.argv[2]
+    else:
+        # generate output file name    
+        outputFile = 'output-{}'.format(sys.argv[1])
     
     # save a reference to the sys.stdout so it can be restored once execution ends 
     original = sys.stdout
