@@ -1,0 +1,71 @@
+Total number of words: 49
+Total number of distinct words: 43
+Popular treshold: 3
+Lower common treshold: 20
+Upper common treshold: 23
+Rare treshold: 40
+
+Popular words
++-----+---------+----+
+| Word|Frequency|Rank|
++-----+---------+----+
+|spark|        3|   1|
+|  the|        3|   2|
+|   an|        2|   3|
++-----+---------+----+
+
+Common words
++---------------+---------+----+
+|           Word|Frequency|Rank|
++---------------+---------+----+
+|     foundation|        1|  20|
+|      framework|        1|  21|
+|general-purpose|        1|  22|
+|            has|        1|  23|
++---------------+---------+----+
+
+Rare words
++----------+---------+----+
+|      Word|Frequency|Rank|
++----------+---------+----+
+|university|        1|  40|
+|       was|        1|  41|
+|     which|        1|  42|
+|      with|        1|  43|
++----------+---------+----+
+
+----------------------
+
+Total number of letters: 317
+Total number of distinct letters: 22
+Popular treshold: 2
+Lower common treshold: 10
+Upper common treshold: 12
+Rare treshold: 20
+
+Popular letters
++------+---------+----+
+|Letter|Frequency|Rank|
++------+---------+----+
+|     e|       36|   1|
+|     a|       35|   2|
++------+---------+----+
+
+Common letters
++------+---------+----+
+|Letter|Frequency|Rank|
++------+---------+----+
+|     p|       15|  10|
+|     c|       13|  11|
+|     d|       12|  12|
++------+---------+----+
+
+Rare letters
++------+---------+----+
+|Letter|Frequency|Rank|
++------+---------+----+
+|     b|        4|  20|
+|     v|        3|  21|
+|     y|        3|  22|
++------+---------+----+
+
